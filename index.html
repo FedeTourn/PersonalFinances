@@ -82,60 +82,62 @@
     const SUPABASE_URL = 'zvxektuvnzliqyzpjgjz';
     const SUPABASE_ANON_KEY = 'sb_publishable_fjAl3BBpwcxTYiZ_I8buNg_1tQjppIJ';
 
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const dbCliente = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let operations = [];
-
+    
     function navigate(pageId) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         fetchData();
     }
-
+    
     // Traer datos desde la nube
     async function fetchData() {
-        const { data, error } = await supabase
+        // Usamos dbCliente en vez de supabase
+        const { data, error } = await dbCliente
             .from('Operaciones')
             .select('*')
             .order('created_at', { ascending: false });
-
+    
         if (error) {
             console.error('Error al obtener datos:', error);
             return;
         }
-
+    
         operations = data;
         updateUI();
     }
-
+    
     // Insertar nueva operación
     document.getElementById('opForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const submitBtn = document.getElementById('submitBtn');
         submitBtn.disabled = true;
         submitBtn.textContent = 'Guardando...';
-
+    
         const nombre = document.getElementById('opName').value;
         const monto = parseFloat(document.getElementById('opAmount').value);
         const isIncome = document.getElementById('opType').checked;
         const tipo = isIncome ? 'ingreso' : 'egreso';
-
-        const { error } = await supabase
+    
+        // Usamos dbCliente en vez de supabase
+        const { error } = await dbCliente
             .from('Operaciones')
             .insert([{ nombre, monto, tipo }]);
-
+    
         submitBtn.disabled = false;
         submitBtn.textContent = 'Guardar Operación';
-
+    
         if (error) {
             alert('Error al guardar en la nube: ' + error.message);
             return;
         }
-
+    
         e.target.reset();
         document.getElementById('opType').checked = false;
         await fetchData();
     });
-
+    
     function updateUI() {
         const incomes = operations.filter(o => o.tipo === 'ingreso');
         const expenses = operations.filter(o => o.tipo === 'egreso');
@@ -143,11 +145,11 @@
         const totalIn = incomes.reduce((acc, o) => acc + o.monto, 0);
         const totalOut = expenses.reduce((acc, o) => acc + o.monto, 0);
         const balance = totalIn - totalOut;
-
+    
         const balEl = document.getElementById('balanceDisplay');
         balEl.textContent = '$' + balance.toLocaleString('es-AR', {minimumFractionDigits: 2});
         balEl.className = 'balance ' + (balance >= 0 ? 'positive' : 'negative');
-
+    
         const renderList = (list, elementId) => {
             document.getElementById(elementId).innerHTML = list.length 
                 ? list.map(o => `
@@ -157,11 +159,11 @@
                     </div>`).join('')
                 : '<p style="color: #777;">No hay registros todavía.</p>';
         };
-
+    
         renderList(incomes, 'incomesList');
         renderList(expenses, 'expensesList');
     }
-
+    
     // Inicialización al cargar la aplicación
     fetchData();
 </script>
