@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Finanzas Nube</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f4f4f9; color: #333; }
+        nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        button { flex: 1; padding: 12px; cursor: pointer; border: none; border-radius: 6px; background: #2b3a4a; color: white; font-weight: bold; transition: background 0.2s;}
+        button:hover { background: #1a2530; }
+        .page { display: none; }
+        .page.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .balance { font-size: 2.5em; font-weight: bold; text-align: center; margin: 20px 0; }
+        .positive { color: #2e7d32; }
+        .negative { color: #c62828; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 8px 0 20px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .list-item { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #eee; }
+        .list-item:last-child { border-bottom: none; }
+        
+        .toggle-wrapper { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 20px; font-weight: bold; }
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ef5350; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #66bb6a; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .loading { text-align: center; color: #777; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <button onclick="navigate('main')">Principal</button>
+    <button onclick="navigate('incomes')">Ingresos</button>
+    <button onclick="navigate('expenses')">Egresos</button>
+</nav>
+
+<div id="main" class="page active card">
+    <h2 style="text-align: center; margin-top: 0;">Saldo Actual</h2>
+    <div id="balanceDisplay" class="balance">$0.00</div>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;">
+    
+    <h3 style="margin-top: 0;">Nueva Operación</h3>
+    <form id="opForm">
+        <label>Nombre de la operación</label>
+        <input type="text" id="opName" placeholder="Ej. Sueldo, Alquiler..." required>
+        
+        <label>Monto</label>
+        <input type="number" id="opAmount" placeholder="0.00" step="0.01" required>
+        
+        <div class="toggle-wrapper">
+            <span style="color: #c62828;">Egreso</span>
+            <label class="switch">
+                <input type="checkbox" id="opType">
+                <span class="slider"></span>
+            </label>
+            <span style="color: #2e7d32;">Ingreso</span>
+        </div>
+        
+        <button type="submit" id="submitBtn" style="width: 100%; background: #007bff;">Guardar Operación</button>
+    </form>
+</div>
+
+<div id="incomes" class="page card">
+    <h2 style="color: #2e7d32; margin-top: 0;">Lista de Ingresos</h2>
+    <div id="incomesList" class="loading">Cargando...</div>
+</div>
+
+<div id="expenses" class="page card">
+    <h2 style="color: #c62828; margin-top: 0;">Lista de Egresos</h2>
+    <div id="expensesList" class="loading">Cargando...</div>
+</div>
+
+<script>
+    // CONFIGURACIÓN DE SUPABASE
+    // Reemplazá estos valores con los de tu proyecto en Supabase Settings -> API
+    const SUPABASE_URL = 'zvxektuvnzliqyzpjgjz';
+    const SUPABASE_ANON_KEY = 'sb_publishable_fjAl3BBpwcxTYiZ_I8buNg_1tQjppIJ';
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let operations = [];
+
+    function navigate(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        fetchData();
+    }
+
+    // Traer datos desde la nube
+    async function fetchData() {
+        const { data, error } = await supabase
+            .from('Operaciones')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error al obtener datos:', error);
+            return;
+        }
+
+        operations = data;
+        updateUI();
+    }
+
+    // Insertar nueva operación
+    document.getElementById('opForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Guardando...';
+
+        const nombre = document.getElementById('opName').value;
+        const monto = parseFloat(document.getElementById('opAmount').value);
+        const isIncome = document.getElementById('opType').checked;
+        const tipo = isIncome ? 'ingreso' : 'egreso';
+
+        const { error } = await supabase
+            .from('Operaciones')
+            .insert([{ nombre, monto, tipo }]);
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Guardar Operación';
+
+        if (error) {
+            alert('Error al guardar en la nube: ' + error.message);
+            return;
+        }
+
+        e.target.reset();
+        document.getElementById('opType').checked = false;
+        await fetchData();
+    });
+
+    function updateUI() {
+        const incomes = operations.filter(o => o.tipo === 'ingreso');
+        const expenses = operations.filter(o => o.tipo === 'egreso');
+        
+        const totalIn = incomes.reduce((acc, o) => acc + o.monto, 0);
+        const totalOut = expenses.reduce((acc, o) => acc + o.monto, 0);
+        const balance = totalIn - totalOut;
+
+        const balEl = document.getElementById('balanceDisplay');
+        balEl.textContent = '$' + balance.toLocaleString('es-AR', {minimumFractionDigits: 2});
+        balEl.className = 'balance ' + (balance >= 0 ? 'positive' : 'negative');
+
+        const renderList = (list, elementId) => {
+            document.getElementById(elementId).innerHTML = list.length 
+                ? list.map(o => `
+                    <div class="list-item">
+                        <span>${o.nombre}</span>
+                        <strong>$${o.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</strong>
+                    </div>`).join('')
+                : '<p style="color: #777;">No hay registros todavía.</p>';
+        };
+
+        renderList(incomes, 'incomesList');
+        renderList(expenses, 'expensesList');
+    }
+
+    // Inicialización al cargar la aplicación
+    fetchData();
+</script>
+</body>
+</html>
