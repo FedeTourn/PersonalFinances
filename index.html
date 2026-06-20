@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+  <script src="profile.js"></script>
 </head>
 <body>
 
@@ -71,6 +72,7 @@
 
     const db  = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let mode  = 'ingreso';
+    let currentProfile = null;
 
     /* ── Format helpers ───────────────────────────── */
     const fmt = n => new Intl.NumberFormat('es-AR', {
@@ -115,7 +117,8 @@
 
       const { data, error } = await db
         .from('operations')
-        .select('amount, type');
+        .select('amount, type')
+        .eq('owner', currentProfile);
 
       if (error) {
         el.textContent = 'Error';
@@ -150,7 +153,7 @@
 
       const { error } = await db
         .from('operations')
-        .insert({ name, amount: amt, type: mode });
+        .insert({ name, amount: amt, type: mode, owner: currentProfile });
 
       if (error) {
         toast('No se pudo guardar', 'err');
@@ -173,8 +176,14 @@
     );
 
     /* ── Boot ─────────────────────────────────────── */
-    if (configured) loadBalance();
-    else document.getElementById('balAmt').textContent = '—';
+    if (configured) {
+      requireProfile(name => {
+        currentProfile = name;
+        loadBalance();
+      });
+    } else {
+      document.getElementById('balAmt').textContent = '—';
+    }
   </script>
 </body>
 </html>
