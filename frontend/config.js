@@ -3,6 +3,6 @@
 //  'https://finanzas-api.onrender.com'
 // ─────────────────────────────────────────────────────────────────────
 
-const API_BASE_URL = 'https://TU_BACKEND.onrender.com';
+const API_BASE_URL = 'https://finanzas-api-wphn.onrender.com';
 
-const PROFILE_NAMES = ['Fede', 'Cochi'];
+const PROFILE_NAMES = ['Fede', 'Coti'];
