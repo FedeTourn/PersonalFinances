@@ -11,7 +11,7 @@ services:
           name: finanzas-db
           property: connectionString
       - key: FRONTEND_ORIGIN
-        value: "https://TU_USUARIO.github.io"
+        value: "https://fedetourn.github.io"
 
 databases:
   - name: finanzas-db
