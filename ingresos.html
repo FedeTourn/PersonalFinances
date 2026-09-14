@@ -6,8 +6,8 @@
   <title>Ingresos · Finanzas</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪙</text></svg>">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+  <script src="api.js"></script>
   <script src="profile.js"></script>
 </head>
 <body>
@@ -34,7 +34,6 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let currentProfile = null;
 
     const fmt = n => new Intl.NumberFormat('es-AR', {
@@ -63,12 +62,13 @@
 
     async function deleteOp(id) {
       if (!confirm('¿Eliminar este ingreso?')) return;
-      const { error } = await db.from('operations').delete().eq('id', id);
-      if (error) {
-        toast('No se pudo eliminar', 'err');
-      } else {
+      try {
+        await apiDeleteOperation(id);
         toast('Eliminado ✓');
         load();
+      } catch (err) {
+        toast('No se pudo eliminar', 'err');
+        console.error(err);
       }
     }
 
@@ -76,16 +76,12 @@
       const list = document.getElementById('list');
       const sub  = document.getElementById('sub');
 
-      const { data, error } = await db
-        .from('operations')
-        .select('*')
-        .eq('type', 'ingreso')
-        .eq('owner', currentProfile)
-        .order('created_at', { ascending: false });
-
-      if (error) {
+      let data;
+      try {
+        data = await apiGetOperations(currentProfile, 'ingreso');
+      } catch (err) {
         list.innerHTML = '<div class="empty"><div class="empty-text">Error al cargar los datos</div></div>';
-        console.error(error);
+        console.error(err);
         return;
       }
 
