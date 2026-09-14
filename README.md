@@ -1,85 +1,130 @@
-# 🪙 Finanzas Personales
+# 🪙 Finanzas Personales — Migración a backend propio (FastAPI + Render)
 
-App web para llevar control de ingresos y egresos. Datos en la nube con Supabase, hosteada gratis en GitHub Pages.
+Esto reemplaza a Supabase por un backend tuyo, escrito en Python con FastAPI,
+con su propia base de datos Postgres. El frontend (HTML/CSS/JS) sigue siendo
+el mismo en espíritu, solo que ahora habla con tu API en vez de con Supabase.
 
----
+## Qué cambió
 
-## Pasos para poner todo en línea
+- **Antes**: el navegador le pegaba directo a Supabase con la `anon key` expuesta.
+- **Ahora**: el navegador le pega a tu API (`/api/operations`, `/api/balance`),
+  y es tu servidor el que habla con la base de datos. La base de datos ya no
+  es accesible directamente desde internet.
+- El selector de perfil (Fede / Cochi) sigue funcionando igual que antes
+  (sin login real, como pediste).
 
-### PASO 1 — Configurar Supabase
+## Estructura
 
-1. Entrá a [supabase.com](https://supabase.com) y creá una cuenta gratuita
-2. Hacé clic en **New project** → dale un nombre (ej: `finanzas`) → elegí una región → creá el proyecto
-3. Una vez creado, andá a **SQL Editor** (menú izquierdo)
-4. Pegá todo el contenido del archivo `setup.sql` y hacé clic en **Run**
-5. Andá a **Settings → API** (menú izquierdo)
-6. Copiá:
-   - **Project URL** → algo como `https://xxxxxxxxxxxx.supabase.co`
-   - **anon / public key** → una clave larga que empieza con `eyJ...`
-
-### PASO 2 — Completar `config.js`
-
-Abrí el archivo `config.js` y reemplazá los placeholders con tus datos:
-
-```js
-const SUPABASE_URL      = 'https://xxxxxxxxxxxx.supabase.co';  // ← tu URL
-const SUPABASE_ANON_KEY = 'eyJ...';                            // ← tu anon key
-const PROFILE_NAMES     = ['Vos', 'Tu novia'];                 // ← pongan sus nombres
+```
+migration/
+  backend/          ← API en FastAPI
+    main.py
+    models.py
+    schemas.py
+    database.py
+    requirements.txt
+    render.yaml
+  frontend/         ← Mismo sitio de antes, pero apuntando a tu API
+    index.html
+    ingresos.html
+    egresos.html
+    config.js
+    api.js
+    profile.js
+    styles.css
 ```
 
-Guardá el archivo.
+---
 
-> 💡 Si ya habías creado la tabla `operations` antes (de una configuración previa),
-> en vez de `setup.sql` ejecutá `migration.sql` en el SQL Editor de Supabase —
-> agrega la columna nueva sin borrar tus datos.
+## PASO 1 — Subir el backend a GitHub
+
+Creá un repo nuevo (o una carpeta `backend/` dentro del actual) y subí todo
+el contenido de `backend/`.
+
+## PASO 2 — Desplegar en Render
+
+### Opción A — Con el archivo `render.yaml` (recomendado, un clic)
+
+1. Entrá a [render.com](https://render.com) y creá una cuenta (podés usar GitHub)
+2. Click en **New** → **Blueprint**
+3. Conectá el repo donde subiste `backend/` (con el `render.yaml` adentro)
+4. Render va a detectar el `render.yaml` y va a crear automáticamente:
+   - El servicio web (`finanzas-api`) — plan free
+   - Una base de datos Postgres (`finanzas-db`) — plan free
+5. Antes de confirmar, editá la variable `FRONTEND_ORIGIN` en el blueprint
+   y poné la URL real de tu GitHub Pages (ej: `https://tuusuario.github.io`)
+6. Click en **Apply** y esperá el deploy (2-3 minutos)
+7. Cuando termine, copiá la URL pública que te da Render, algo como:
+   `https://finanzas-api.onrender.com`
+
+### Opción B — Manual
+
+1. **New** → **PostgreSQL** → creá la base (plan free) → copiá el **Internal Database URL**
+2. **New** → **Web Service** → conectá el repo del backend
+   - Build command: `pip install -r requirements.txt`
+   - Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+3. En **Environment**, agregá:
+   - `DATABASE_URL` = la URL que copiaste de la base
+   - `FRONTEND_ORIGIN` = la URL de tu GitHub Pages
+4. Deploy y copiá la URL pública del servicio
+
+> ⚠️ Nota sobre el plan free de Render: el servicio web "se duerme" tras
+> ~15 min sin uso, y tarda unos segundos en despertar en el próximo pedido.
+> Para uso personal esto normalmente no molesta.
+
+## PASO 3 — Configurar el frontend
+
+Abrí `frontend/config.js` y poné la URL de tu backend:
+
+```js
+const API_BASE_URL = 'https://finanzas-api.onrender.com';
+```
+
+## PASO 4 — Subir el frontend a GitHub Pages
+
+Igual que antes: subí todos los archivos de `frontend/` a tu repo de GitHub
+Pages y activá Pages desde Settings → Pages → Deploy from branch → main.
+
+## PASO 5 — Probar
+
+Entrá a tu URL de GitHub Pages, elegí un perfil, y cargá un ingreso o egreso.
+Si algo falla, abrí la consola del navegador (F12) — vas a ver el error de
+`fetch` ahí. Los errores más comunes:
+
+- **CORS bloqueado**: revisá que `FRONTEND_ORIGIN` en Render coincida
+  exactamente con tu URL de GitHub Pages (sin barra final).
+- **"Failed to fetch"**: el backend puede estar "durmiendo" (plan free) —
+  esperá unos segundos y reintentá.
 
 ---
 
-### PASO 3 — Subir a GitHub Pages
+## Desarrollo local (probar antes de desplegar)
 
-1. Entrá a [github.com](https://github.com) y creá una cuenta si no tenés
-2. Hacé clic en **New repository** (botón verde)
-   - Nombre: `finanzas` (o el que quieras)
-   - Dejalo en **Public**
-   - No agregues ningún archivo extra
-   - Hacé clic en **Create repository**
-3. En la página del repositorio vacío, hacé clic en **uploading an existing file**
-4. Arrastrá o seleccioná **todos** los archivos de esta carpeta:
-   - `index.html`
-   - `ingresos.html`
-   - `egresos.html`
-   - `styles.css`
-   - `config.js` ← (ya con tus credenciales del Paso 2)
-5. Hacé clic en **Commit changes**
-6. Andá a **Settings** (tab superior del repo) → **Pages** (menú izquierdo)
-7. En **Source**, seleccioná **Deploy from a branch**
-8. En **Branch**, elegí `main` → `/ (root)` → **Save**
-9. Esperá 1-2 minutos y recargá la página
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
 
-Tu URL va a ser: `https://TU_USUARIO.github.io/finanzas/`
+Esto levanta el backend en `http://127.0.0.1:8000` usando SQLite localmente
+(no hace falta Postgres para probar). Documentación interactiva automática
+disponible en `http://127.0.0.1:8000/docs`.
+
+Para probar el frontend contra tu backend local, poné en `config.js`:
+```js
+const API_BASE_URL = 'http://127.0.0.1:8000';
+```
+y abrí `index.html` con Live Server o similar (no como `file://`, porque
+`fetch` necesita que sea servido por http).
 
 ---
 
-## Uso desde cualquier equipo
+## Qué es fácil sumar después
 
-Con la URL de arriba podés acceder desde la compu, el celu, o cualquier dispositivo. Los datos están en Supabase así que son compartidos en todos lados en tiempo real.
-
----
-
-## Perfiles (vos y tu novia)
-
-La primera vez que cada uno entra a la app, va a aparecer una pantalla para elegir su nombre. Esa elección queda guardada en el navegador de ese equipo, así que cada quien ve solo sus propias operaciones — el saldo, los ingresos y los egresos no se mezclan.
-
-- El nombre elegido aparece como una etiqueta arriba a la derecha, en el menú
-- Tocando esa etiqueta podés cambiar de perfil (útil si comparten el mismo equipo)
-- Cada perfil tiene su propio saldo, su propia lista de ingresos y su propia lista de egresos
-
-**Importante:** esto no es un login con contraseña, es solo una forma de separar los datos para que no se confundan. Cualquiera que abra la app puede elegir cualquiera de los dos nombres. Como charlamos, esto está bien porque no es información sensible — si en algún momento quisieran privacidad real entre cuentas, ahí sí conviene sumar Supabase Auth.
-
----
-
-## Seguridad
-
-La `anon key` de Supabase está diseñada para ser pública — la seguridad la maneja Supabase internamente a través de Row Level Security. Para un uso personal esto es suficiente.
-
-Si en algún momento querés agregar login (para que nadie más pueda ver tus datos), se puede hacer fácil con Supabase Auth.
+- **Auth real** (usuario + contraseña): agregar tabla `users`, hashing con
+  `passlib`, y JWT con `python-jose`. Lo dejamos afuera porque dijiste que
+  el selector de perfil te alcanza por ahora.
+- **Editar operaciones** (no solo crear/borrar): un endpoint `PUT /api/operations/{id}`.
+- **Categorías, filtros por fecha, exportar a CSV**, etc. — todo esto es
+  mucho más natural de agregar ahora que tenés un backend propio con
+  lógica en Python, en vez de depender de lo que Supabase expone.
