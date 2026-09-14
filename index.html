@@ -6,8 +6,8 @@
   <title>Finanzas Personales</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪙</text></svg>">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+  <script src="api.js"></script>
   <script src="profile.js"></script>
 </head>
 <body>
@@ -61,16 +61,13 @@
 
   <script>
     /* ── Init ─────────────────────────────────────── */
-    const configured =
-      SUPABASE_URL  !== 'https://TU_PROYECTO.supabase.co' &&
-      SUPABASE_ANON_KEY !== 'TU_ANON_KEY_AQUI';
+    const configured = API_BASE_URL !== 'https://TU_BACKEND.onrender.com';
 
     if (!configured) {
       document.getElementById('configWarn').innerHTML =
-        '<div class="config-warn">⚠️ Completá las credenciales en <code>config.js</code> para que la app funcione.</div>';
+        '<div class="config-warn">⚠️ Completá la URL del backend en <code>config.js</code> para que la app funcione.</div>';
     }
 
-    const db  = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let mode  = 'ingreso';
     let currentProfile = null;
 
@@ -115,31 +112,21 @@
       const el   = document.getElementById('balAmt');
       const glow = document.getElementById('glow');
 
-      const { data, error } = await db
-        .from('operations')
-        .select('amount, type')
-        .eq('owner', currentProfile);
-
-      if (error) {
+      try {
+        const { balance } = await apiGetBalance(currentProfile);
+        el.textContent = fmt(balance);
+        const cls = balance > 0 ? 'pos' : balance < 0 ? 'neg' : 'zero';
+        el.className = `balance-amount ${cls}`;
+        glow.style.background = balance > 0 ? 'var(--income)' : balance < 0 ? 'var(--expense)' : 'transparent';
+      } catch (err) {
         el.textContent = 'Error';
-        console.error(error);
-        return;
+        console.error(err);
       }
-
-      let bal = 0;
-      (data || []).forEach(op =>
-        bal += op.type === 'ingreso' ? +op.amount : -op.amount
-      );
-
-      el.textContent = fmt(bal);
-      const cls = bal > 0 ? 'pos' : bal < 0 ? 'neg' : 'zero';
-      el.className = `balance-amount ${cls}`;
-      glow.style.background = bal > 0 ? 'var(--income)' : bal < 0 ? 'var(--expense)' : 'transparent';
     }
 
     /* ── Add operation ────────────────────────────── */
     async function addOp() {
-      if (!configured) { toast('Configurá las credenciales primero', 'err'); return; }
+      if (!configured) { toast('Configurá la URL del backend primero', 'err'); return; }
 
       const name = document.getElementById('nameIn').value.trim();
       const amt  = parseFloat(document.getElementById('amtIn').value);
@@ -151,19 +138,16 @@
       btn.disabled    = true;
       btn.textContent = 'Guardando…';
 
-      const { error } = await db
-        .from('operations')
-        .insert({ name, amount: amt, type: mode, owner: currentProfile });
-
-      if (error) {
-        toast('No se pudo guardar', 'err');
-        console.error(error);
-      } else {
+      try {
+        await apiCreateOperation({ name, amount: amt, type: mode, owner: currentProfile });
         toast(`${mode === 'ingreso' ? 'Ingreso' : 'Egreso'} guardado ✓`);
         document.getElementById('nameIn').value = '';
         document.getElementById('amtIn').value  = '';
         document.getElementById('nameIn').focus();
         await loadBalance();
+      } catch (err) {
+        toast('No se pudo guardar', 'err');
+        console.error(err);
       }
 
       btn.disabled    = false;
