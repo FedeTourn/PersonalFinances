@@ -1,10 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────
-//  PASO 1 — Completá estas dos líneas con tus credenciales de Supabase
-//  Las encontrás en: supabase.com → tu proyecto → Settings → API
+//  Completá con la URL pública de tu backend en Render, por ejemplo:
+//  'https://finanzas-api.onrender.com'
 // ─────────────────────────────────────────────────────────────────────
 
-const SUPABASE_URL      = 'https://zvxektuvnzliqyzpjgjz.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eGVrdHV2bnpsaXF5enBqZ2p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MjcyNDgsImV4cCI6MjA5NzMwMzI0OH0.UyHw-EY-ML7lx1d3NRqKg6k_f5tvm8yBMbbnshWjz50';
+const API_BASE_URL = 'https://finanzas-api-wphn.onrender.com';
 
-
-const PROFILE_NAMES = ['Fede', 'Cochi'];
+const PROFILE_NAMES = ['Fede', 'Coti'];
